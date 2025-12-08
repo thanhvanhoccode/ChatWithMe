@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Nhóm Vui Vẻ</title>
+    <style>
+        /* --- 1. CẤU HÌNH GIAO DIỆN (CSS) --- */
+        :root {
+            --primary: #0084ff; /* Màu xanh Messenger */
+            --bg: #f0f2f5;
+            --white: #fff;
+            --text: #050505;
+            --grey: #e4e6eb;
+            --green: #31a24c; /* Màu online */
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { height: 100vh; overflow: hidden; background: var(--bg); }
+
+        /* MÀN HÌNH LOGIN */
+        #login-screen {
+            display: flex; justify-content: center; align-items: center; height: 100vh;
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            position: absolute; width: 100%; z-index: 1000;
+        }
+        .login-box {
+            background: var(--white); padding: 40px; border-radius: 15px;
+            width: 90%; max-width: 380px; text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        }
+        .login-box h2 { margin-bottom: 20px; color: #333; }
+        .login-box input { 
+            width: 100%; padding: 14px; margin: 8px 0; border: 1px solid #ddd; 
+            border-radius: 8px; outline: none; font-size: 16px; background: #fafafa;
+        }
+        .login-box input:focus { border-color: var(--primary); background: #fff; }
+        .login-box button { 
+            width: 100%; padding: 14px; background: var(--primary); color: white; 
+            border: none; border-radius: 8px; font-weight: bold; cursor: pointer; 
+            font-size: 16px; margin-top: 10px; transition: 0.2s;
+        }
+        .login-box button:hover { background: #0073e6; }
+        .login-box button:disabled { background: #ccc; cursor: wait; }
+
+        /* MÀN HÌNH CHAT */
+        #chat-screen { display: none; height: 100vh; width: 100vw; }
+        .container { display: flex; height: 100%; width: 100%; }
+
+        /* Sidebar (Danh sách User) */
+        .sidebar {
+            width: 280px; background: var(--white); border-right: 1px solid #ddd;
+            display: flex; flex-direction: column; transition: transform 0.3s ease;
+            z-index: 100;
+        }
+        .sidebar-header {
+            padding: 20px; font-weight: bold; font-size: 18px; border-bottom: 1px solid #eee;
+            background: #fff; display: flex; justify-content: space-between; align-items: center;
+        }
+        .user-list { flex: 1; overflow-y: auto; list-style: none; }
+        .user-item {
+            padding: 12px 20px; display: flex; align-items: center; cursor: pointer;
+            border-bottom: 1px solid #f9f9f9; transition: background 0.2s;
+        }
+        .user-item:hover { background: #f5f5f5; }
+        
+        .avatar {
+            width: 42px; height: 42px; background: #ddd; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px; font-weight: bold; margin-right: 12px; color: #555; position: relative;
+        }
+        /* Chấm xanh Online */
+        .online-dot {
+            width: 11px; height: 11px; background: var(--green); border-radius: 50%;
+            border: 2px solid var(--white);
+            position: absolute; bottom: 0; right: 0;
+            display: none; 
+        }
+        .user-item.is-online .online-dot { display: block; }
+
+        /* Khu vực Chat Chính */
+        .main { flex: 1; display: flex; flex-direction: column; background: var(--white); position: relative; }
+        
+        .chat-header {
+            padding: 15px 20px; border-bottom: 1px solid #ddd; font-weight: bold;
+            display: flex; align-items: center; background: var(--white); 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); z-index: 10;
+        }
+        #btn-menu { display: none; background: none; border: none; font-size: 24px; margin-right: 15px; cursor: pointer; }
+
+        .messages {
+            flex: 1; padding: 20px; overflow-y: auto; background: var(--bg);
+            display: flex; flex-direction: column; gap: 10px;
+        }
+        
+        .msg { max-width: 70%; padding: 10px 16px; border-radius: 18px; font-size: 15px; word-wrap: break-word; position: relative; line-height: 1.4; }
+        .msg.me { align-self: flex-end; background: var(--primary); color: white; border-bottom-right-radius: 4px; }
+        .msg.other { align-self: flex-start; background: var(--white); color: var(--text); border: 1px solid #e4e6eb; border-bottom-left-radius: 4px; }
+        .sender-name { font-size: 11px; color: #666; display: block; margin-bottom: 4px; margin-left: 2px; }
+
+        .input-area { padding: 15px; border-top: 1px solid #ddd; display: flex; gap: 10px; background: var(--white); }
+        .input-area input { flex: 1; padding: 12px 20px; border-radius: 25px; border: 1px solid #ccc; outline: none; background: #f0f2f5; transition: 0.2s;}
+        .input-area input:focus { background: #fff; border-color: var(--primary); }
+        .input-area button { padding: 0 25px; border-radius: 25px; border: none; background: var(--primary); color: white; font-weight: bold; cursor: pointer; transition: 0.2s;}
+        .input-area button:hover { background: #0073e6; }
+
+        /* MOBILE RESPONSIVE */
+        @media (max-width: 768px) {
+            .sidebar { position: absolute; left: -100%; top: 0; bottom: 0; width: 80%; max-width: 300px; box-shadow: 5px 0 15px rgba(0,0,0,0.2); }
+            .sidebar.active { left: 0; transform: translateX(0); }
+            #btn-menu { display: block; }
+            #overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 99; }
+            #overlay.active { display: block; }
+            .msg { max-width: 85%; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 1. MÀN HÌNH ĐĂNG NHẬP -->
+    <div id="login-screen">
+        <div class="login-box">
+            <h2>💬 Chat Nhóm</h2>
+            <input type="text" id="username" placeholder="Tên của bạn (VD: Huy)" autocapitalize="off">
+            <input type="password" id="password" placeholder="Mật khẩu">
+            <button onclick="handleLogin()" id="btn-login">Đăng nhập / Đăng ký</button>
+            <p id="login-msg" style="color: red; font-size: 13px; margin-top: 15px; min-height: 20px;"></p>
+        </div>
+    </div>
+
+    <!-- 2. MÀN HÌNH CHAT -->
+    <div id="chat-screen">
+        <div class="container">
+            <!-- Overlay che màn hình khi mở menu mobile -->
+            <div id="overlay" onclick="toggleSidebar()"></div>
+
+            <!-- Sidebar -->
+            <aside class="sidebar" id="sidebar">
+                <div class="sidebar-header">
+                    Thành viên
+                    <span onclick="toggleSidebar()" style="cursor:pointer; font-size:24px; display:none;" class="close-btn">&times;</span>
+                </div>
+                <ul class="user-list" id="user-list-ui">
+                    <!-- JS sẽ điền user vào đây -->
+                </ul>
+            </aside>
+
+            <!-- Main Chat -->
+            <main class="main">
+                <div class="chat-header">
+                    <button id="btn-menu" onclick="toggleSidebar()">☰</button>
+                    <span id="header-title">Phòng Chat Chung</span>
+                    <button onclick="logout()" style="margin-left: auto; padding: 5px 10px; font-size: 13px; border: 1px solid red; background: white; color: red; border-radius: 5px; cursor: pointer;">Thoát</button>
+                </div>
+
+                <div class="messages" id="msg-box"></div>
+
+                <div class="input-area">
+                    <input type="text" id="msg-input" placeholder="Nhập tin nhắn..." autocomplete="off">
+                    <button onclick="sendMessage()">Gửi</button>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- 3. LOGIC XỬ LÝ (JAVASCRIPT) -->
+    <script>
+        // --- CẤU HÌNH API (LINK CHUẨN CỦA BẠN) ---
+        const API_URL = 'https://693023ba778bbf9e006fff99.mockapi.io/accounts/alldatausers'; 
+        // ------------------------------------------
+
+        let currentUser = null;
+        let chatInterval = null;
+
+        // Xử lý menu mobile
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+            document.getElementById('overlay').classList.toggle('active');
+        }
+
+        // --- A. XỬ LÝ ĐĂNG NHẬP ---
+        async function handleLogin() {
+            const userInp = document.getElementById('username').value.trim();
+            const passInp = document.getElementById('password').value.trim();
+            const btn = document.getElementById('btn-login');
+            const msg = document.getElementById('login-msg');
+
+            if (!userInp || !passInp) return msg.innerText = "Vui lòng điền đầy đủ tên và mật khẩu!";
+
+            btn.disabled = true; 
+            btn.innerText = "Đang kiểm tra...";
+            msg.innerText = "";
+
+            try {
+                // 1. Tải danh sách user về
+                const res = await fetch(API_URL);
+                if (!res.ok) throw new Error("Lỗi kết nối MockAPI");
+                const users = await res.json();
+                
+                // 2. Tìm xem user có chưa (So sánh chữ thường)
+                const existingUser = users.find(u => u.username.toLowerCase() === userInp.toLowerCase());
+
+                if (existingUser) {
+                    // Đã có -> Kiểm tra pass
+                    if (existingUser.password === passInp) {
+                        // Pass đúng -> Update Online -> Vào chat
+                        await updateStatus(existingUser.id, 'online');
+                        currentUser = { ...existingUser, statusLogin: 'online' }; // Cập nhật local
+                        enterChat();
+                    } else {
+                        msg.innerText = "Sai mật khẩu rồi bạn ơi!";
+                        btn.disabled = false; btn.innerText = "Đăng nhập / Đăng ký";
+                    }
+                } else {
+                    // Chưa có -> Hỏi tạo mới
+                    if(confirm(`Tài khoản "${userInp}" chưa tồn tại.\nBạn có muốn tạo mới tài khoản này không?`)) {
+                        const newUser = {
+                            username: userInp,
+                            password: passInp,
+                            contents: "[]",       // Mảng tin nhắn rỗng (Lưu ý: contents)
+                            statusLogin: "online" // Trạng thái (Lưu ý: statusLogin)
+                        };
+                        
+                        const createRes = await fetch(API_URL, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify(newUser)
+                        });
+                        
+                        currentUser = await createRes.json();
+                        enterChat();
+                    } else {
+                        btn.disabled = false; btn.innerText = "Đăng nhập / Đăng ký";
+                        msg.innerText = "Đã hủy tạo tài khoản.";
+                    }
+                }
+            } catch (err) {
+                console.error(err);
+                msg.innerText = "Lỗi kết nối! Kiểm tra lại link API.";
+                btn.disabled = false; btn.innerText = "Đăng nhập / Đăng ký";
+            }
+        }
+
+        async function updateStatus(id, status) {
+            try {
+                await fetch(`${API_URL}/${id}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ statusLogin: status })
+                });
+            } catch(e) { console.log("Lỗi update status"); }
+        }
+
+        function enterChat() {
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('chat-screen').style.display = 'block';
+            document.getElementById('header-title').innerText = `Chat - ${currentUser.username}`;
+            
+            // Gọi hàm tải dữ liệu lần đầu ngay lập tức
+            loadData();
+            // Cài đặt lặp lại mỗi 3 giây
+            chatInterval = setInterval(loadData, 3000); 
+        }
+
+        async function logout() {
+            if(confirm("Bạn muốn thoát chứ?")) {
+                clearInterval(chatInterval);
+                if(currentUser) await updateStatus(currentUser.id, 'offline');
+                location.reload();
+            }
+        }
+
+        // --- B. LOGIC CHAT (POLLING) ---
+        async function loadData() {
+            try {
+                const res = await fetch(API_URL);
+                const users = await res.json();
+
+                renderUserList(users);
+                processAndRenderMessages(users);
+            } catch (err) { console.error("Lỗi polling:", err); }
+        }
+
+        // Hiển thị danh sách user bên trái
+        function renderUserList(users) {
+            const listUi = document.getElementById('user-list-ui');
+            listUi.innerHTML = '';
+
+            // Sắp xếp: Ai online đưa lên đầu
+            users.sort((a, b) => (a.statusLogin === 'online' ? -1 : 1));
+
+            users.forEach(u => {
+                const firstLetter = u.username.charAt(0).toUpperCase();
+                const color = stringToColor(u.username);
+                const isMe = currentUser && u.username === currentUser.username;
+                const isOnline = u.statusLogin === 'online';
+
+                const li = document.createElement('li');
+                li.className = `user-item ${isOnline ? 'is-online' : ''}`;
+                li.innerHTML = `
+                    <div class="avatar" style="background:${color}; color:white;">
+                        ${firstLetter}
+                        <div class="online-dot"></div>
+                    </div>
+                    <div style="flex:1;">
+                        <div style="font-weight:bold; font-size:14px; color:#333;">
+                            ${u.username} ${isMe ? '<span style="color:var(--primary)">(Bạn)</span>' : ''}
+                        </div>
+                        <div style="font-size:12px; color:${isOnline ? 'green' : '#999'};">
+                            ${isOnline ? '● Đang hoạt động' : 'Offline'}
+                        </div>
+                    </div>
+                `;
+                listUi.appendChild(li);
+            });
+        }
+
+        // Xử lý và hiển thị tin nhắn
+        function processAndRenderMessages(users) {
+            let allMsgs = [];
+
+            users.forEach(u => {
+                try {
+                    // LƯU Ý: Lấy từ trường 'contents'
+                    const msgs = JSON.parse(u.contents || "[]");
+                    msgs.forEach(m => {
+                        // Gắn thêm tên người gửi vào object tin nhắn để hiển thị
+                        m.senderName = u.username;
+                        allMsgs.push(m);
+                    });
+                } catch (e) { }
+            });
+
+            // Sắp xếp tin nhắn theo thời gian (cũ trên, mới dưới)
+            allMsgs.sort((a, b) => a.ts - b.ts);
+
+            const msgBox = document.getElementById('msg-box');
+            
+            // Logic giữ vị trí cuộn: Chỉ tự cuộn xuống nếu user đang ở gần đáy
+            const isAtBottom = msgBox.scrollHeight - msgBox.scrollTop <= msgBox.clientHeight + 200;
+
+            msgBox.innerHTML = '';
+            
+            allMsgs.forEach(m => {
+                const div = document.createElement('div');
+                const isMe = m.senderName === currentUser.username;
+                div.className = `msg ${isMe ? 'me' : 'other'}`;
+                
+                const senderHtml = isMe ? '' : `<span class="sender-name">${m.senderName}</span>`;
+                div.innerHTML = `${senderHtml}${m.txt}`;
+                
+                msgBox.appendChild(div);
+            });
+
+            if(isAtBottom) {
+                msgBox.scrollTop = msgBox.scrollHeight;
+            }
+        }
+
+        // --- C. GỬI TIN NHẮN ---
+        async function sendMessage() {
+            const input = document.getElementById('msg-input');
+            const txt = input.value.trim();
+            if(!txt) return;
+
+            input.value = ''; // Xóa ô nhập liệu ngay cho mượt
+            input.focus();
+
+            try {
+                // 1. Fetch lại dữ liệu mới nhất của bản thân (để tránh ghi đè tin nhắn vừa nhận được ở tab khác nếu có)
+                const res = await fetch(`${API_URL}/${currentUser.id}`);
+                const myLatestData = await res.json();
+
+                // 2. Parse tin nhắn cũ từ trường contents
+                let myMsgs = [];
+                try { myMsgs = JSON.parse(myLatestData.contents || "[]"); } catch(e){}
+
+                // 3. Thêm tin mới
+                myMsgs.push({
+                    txt: txt,
+                    ts: Date.now()
+                });
+
+                // (Option) Giới hạn lưu 100 tin gần nhất của mỗi người để nhẹ DB
+                if(myMsgs.length > 100) myMsgs.shift();
+
+                // 4. Update lên server
+                await fetch(`${API_URL}/${currentUser.id}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        contents: JSON.stringify(myMsgs) // Phải stringify thành chuỗi trước khi lưu
+                    })
+                });
+
+                // 5. Load lại ngay
+                loadData();
+
+            } catch (err) {
+                alert("Lỗi gửi tin nhắn: " + err);
+            }
+        }
+
+        // Hỗ trợ phím Enter
+        document.getElementById('msg-input').addEventListener("keypress", function(e) {
+            if (e.key === "Enter") sendMessage();
+        });
+        document.getElementById('password').addEventListener("keypress", function(e) {
+            if (e.key === "Enter") handleLogin();
+        });
+
+        // Hàm tạo màu ngẫu nhiên cho avatar dựa trên tên
+        function stringToColor(str) {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                hash = str.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            let color = '#';
+            for (let i = 0; i < 3; i++) {
+                let value = (hash >> (i * 8)) & 0xFF;
+                color += ('00' + value.toString(16)).substr(-2);
+            }
+            return color;
+        }
+
+    </script>
+</body>
+</html>
