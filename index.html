@@ -112,6 +112,39 @@
             #overlay.active { display: block; }
             .msg { max-width: 85%; }
         }
+        /* --- Dán đoạn này vào cuối thẻ <style> --- */
+
+        @media (max-width: 768px) {
+            /* 1. Sửa lỗi chiều cao bị thanh địa chỉ che mất */
+            body, #chat-screen, .container, .main {
+                height: 100dvh !important; /* Dùng dvh để tính chiều cao thực tế */
+                min-height: 100dvh;
+            }
+        
+            /* 2. Cố định vùng nhập liệu và tránh tai thỏ/thanh gạch ngang của iPhone */
+            .input-area {
+                position: sticky; /* Dính chặt xuống đáy */
+                bottom: 0;
+                left: 0;
+                width: 100%;
+                background: #fff;
+                z-index: 100; /* Luôn nổi lên trên */
+                
+                /* Tăng khoảng cách đáy lên để dễ bấm trên điện thoại */
+                padding: 10px;
+                padding-bottom: 15px; 
+                
+                /* Dòng này cực quan trọng cho iPhone đời mới (tránh cái thanh Home nằm đè lên) */
+                padding-bottom: env(safe-area-inset-bottom, 15px);
+            }
+        
+            /* 3. Đảm bảo khung chat co giãn đúng để không che mất tin cuối */
+            .messages {
+                flex: 1;
+                height: auto;
+                padding-bottom: 20px; /* Khoảng hở để tin nhắn cuối không bị sát nút gửi */
+            }
+        }
     </style>
 </head>
 <body>
@@ -424,4 +457,5 @@
 
     </script>
 </body>
+
 </html>
